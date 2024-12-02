@@ -6,9 +6,11 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework import permissions
 
 from .serializers import UserSerializer, MenuItemSerializer
 from .models import MenuItem
+from .permissions import ManagerUser
 
 '''
 class GroupApiView(APIView):
@@ -23,13 +25,20 @@ class GroupApiView(APIView):
 
 '''
 
-class MenuItemApiView(ListCreateAPIView, RetrieveUpdateDestroyAPIView):
+class MenuItemListCreateApiView(ListCreateAPIView):
 
     queryset = MenuItem.objects.select_related('category').all()
     serializer_class = MenuItemSerializer
-"""
+
     def get_permissions(self):
-        if (self.request.method=='GET'):
-            return []
-        return [IsAuthenticated]
-"""
+        
+        if(self.request.method=='POST'):
+            return [ManagerUser()]
+        else:
+            return[]
+            
+        
+class MenuItemUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
+
+    queryset = MenuItem.objects.select_related('category').all()
+    serializer_class = MenuItemSerializer
