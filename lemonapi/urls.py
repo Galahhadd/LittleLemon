@@ -3,7 +3,8 @@ from django.urls import path
 from .views import (MenuItemListCreateApiView,
                     MenuItemUpdateDeleteApiView, 
                     ManagerGroupApiView,
-                    DeliveryGroupApiView,)
+                    DeliveryGroupApiView,
+                    CartApiView,)
 
 urlpatterns = [
     #path('groups/manager/users', GroupApiView.as_view()),
@@ -13,4 +14,5 @@ urlpatterns = [
     path('groups/manager/users/<int:pk>', ManagerGroupApiView.as_view()),
     path('groups/delivery-crew/users/', DeliveryGroupApiView.as_view()),
     path('groups/delivery-crew/users/<int:pk>', DeliveryGroupApiView.as_view()),
+    path('cart/menu-items', CartApiView.as_view())
 ]

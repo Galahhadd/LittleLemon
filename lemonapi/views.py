@@ -7,25 +7,13 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, DestroyAPIView
 from rest_framework import permissions
 
-from .serializers import UserSerializer, MenuItemSerializer
-from .models import MenuItem
+from .serializers import UserSerializer, MenuItemSerializer, CartSerializer
+from .models import MenuItem, Cart
 from .permissions import ManagerUser
 
-'''
-class GroupApiView(APIView):
-
-    permission_classes = [IsAdminUser]
-
-    def get(self, request):
-        managers = User.objects.filter(groups__name = 'Manager')
-        serializer = UserSerializer(managers)
-        print(dir(serializer))
-        return Response(serializer, status=status.HTTP_200_OK)
-
-'''
 
 class MenuItemListCreateApiView(ListCreateAPIView):
 
@@ -110,4 +98,29 @@ class DeliveryGroupApiView(APIView):
         role = Group.objects.get(name = 'Delivery')
         user.groups.remove(role)
         return Response ({"message" : "Delivery-crew role was removed successfully"}, status=status.HTTP_200_OK)
+
+
+class CartApiView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        cart = user.cart_set.all()
+        serializer = CartSerializer(cart, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+
+        serializer = CartSerializer(data = request.data, context = {'request':request})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+
+        return Response(serializer.validated_data, status=status.HTTP_201_CREATED)
+    
+    def delete(self, request):
+        user = request.user
+        cart = user.cart_set.all().delete()
+        return Response({"message":"All items from cart were successfully deleted"}, status=status.HTTP_200_OK)
+
 
