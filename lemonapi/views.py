@@ -10,9 +10,13 @@ from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, DestroyAPIView
 from rest_framework import permissions
 
-from .serializers import UserSerializer, MenuItemSerializer, CartSerializer
-from .models import MenuItem, Cart
+from .serializers import UserSerializer, MenuItemSerializer, CartSerializer, OrderSerializer
+from .models import MenuItem, Cart, Order, OrderItem
 from .permissions import ManagerUser
+
+import datetime
+
+
 
 
 class MenuItemListCreateApiView(ListCreateAPIView):
@@ -93,11 +97,12 @@ class DeliveryGroupApiView(APIView):
         managers.user_set.add(user)
         return Response({"message":"New delivery-crew member was assigned"}, status=status.HTTP_200_OK)
     
-    def delete(self, request, pk):
-        user = get_object_or_404(User, id = pk)
-        role = Group.objects.get(name = 'Delivery')
-        user.groups.remove(role)
-        return Response ({"message" : "Delivery-crew role was removed successfully"}, status=status.HTTP_200_OK)
+    def delete(self, request, pk = None):
+        if pk:
+            user = get_object_or_404(User, id = pk)
+            role = Group.objects.get(name = 'Delivery')
+            user.groups.remove(role)
+            return Response ({"message" : "Delivery-crew role was removed successfully"}, status=status.HTTP_200_OK)
 
 
 class CartApiView(APIView):
@@ -122,5 +127,79 @@ class CartApiView(APIView):
         user = request.user
         cart = user.cart_set.all().delete()
         return Response({"message":"All items from cart were successfully deleted"}, status=status.HTTP_200_OK)
+    
+
+class OrderApiView(APIView):
+    
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk = None):
+
+        if request.user.groups.filter(name = 'Manager').exists() or request.user.is_superuser:
+            orders = Order.objects.all()
+            serializer = OrderSerializer(orders, many = True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        elif request.user.groups.filter(name = 'Delivery').exists():
+            orders = Order.objects.filter(delivery_crew = request.user)
+            serializer = OrderSerializer(orders, many = True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        else:
+            if pk:
+                order = get_object_or_404(Order, id = pk)
+                if request.user != order.user:
+                    return Response({"message":"You are not able to view this data"}, status=status.HTTP_403_FORBIDDEN)
+                else:
+                    serializer = OrderSerializer(order)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+
+            else:
+                orders = Order.objects.filter(user = request.user)
+                serializer = OrderSerializer(orders, many = True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            
+    def post(self, request):
+        cart = Cart.objects.filter(user = request.user)
+
+        if not cart:
+            return Response({"message":"Cart is empty, can't create order"}, status=status.HTTP_404_NOT_FOUND)
+        
+        total = 0
+        for item in cart:
+            total += item.price
+        order = Order(user=request.user, total = total, date = datetime.timedelta(hours=2))
+        order.save()
+        orderitems = [OrderItem(order = order, 
+                                menuitem = item.menuitem, 
+                                quantity = item.quantity, 
+                                price = item.price, 
+                                unit_price = item.unit_price) for item in cart]
+        
+        OrderItem.objects.bulk_create(orderitems)
+        serializer = OrderSerializer(order)
+        cart.delete()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+
+        
+
+    def delete(self, request, pk = None):
+        if pk:
+            order = get_object_or_404(Order, id = pk)
+            if request.user.groups.filter(name = 'Manager').exists() or request.user.is_superuser:
+                order.delete()
+                return Response ({"message" : "Order was deleted"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"message":"You are not able to delete this order"}, status=status.HTTP_403_FORBIDDEN)
+        else:
+            return Response({"message":"You didn't provide proper id"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+
+
+
 
 
