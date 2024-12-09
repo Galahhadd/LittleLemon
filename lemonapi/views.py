@@ -9,6 +9,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, DestroyAPIView
 from rest_framework import permissions
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .serializers import UserSerializer, MenuItemSerializer, CartSerializer, OrderSerializer
 from .models import MenuItem, Cart, Order, OrderItem
@@ -23,6 +26,9 @@ class MenuItemListCreateApiView(ListCreateAPIView):
 
     queryset = MenuItem.objects.select_related('category').all()
     serializer_class = MenuItemSerializer
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['price', 'featured', 'category__slug', 'title']
 
     def get_permissions(self):
         if(self.request.method=='POST'):
@@ -35,6 +41,7 @@ class MenuItemUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
 
     queryset = MenuItem.objects.select_related('category').all()
     serializer_class = MenuItemSerializer
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get_permissions(self):
         if(self.request.method=='GET'):
@@ -45,6 +52,7 @@ class MenuItemUpdateDeleteApiView(RetrieveUpdateDestroyAPIView):
 class ManagerGroupApiView(APIView):
 
     permission_classes = [ManagerUser]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get(self, request):
         users = User.objects.filter(groups__name = 'Manager')
@@ -76,6 +84,7 @@ class ManagerGroupApiView(APIView):
 class DeliveryGroupApiView(APIView):
 
     permission_classes = [ManagerUser]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get(self, request):
         users = User.objects.filter(groups__name = 'Delivery')
@@ -108,6 +117,7 @@ class DeliveryGroupApiView(APIView):
 class CartApiView(APIView):
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get(self, request):
         user = request.user
@@ -132,6 +142,8 @@ class CartApiView(APIView):
 class OrderApiView(APIView):
     
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get(self, request, pk = None):
 
