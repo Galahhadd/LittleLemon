@@ -64,3 +64,23 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id','user','delivery_crew', 'status', 'total', 'date', 'orderitem_set']
+
+
+    def validate(self, data):
+        user = self.context['request'].user
+
+        if user.groups.filter(name = 'Delivery').exists():
+            if data['status'] not in [0,1]:
+                raise serializers.ValidationError("Incorrect status code, choose either 1 or 0")
+            if any(field not in ['status'] for field in data):
+                raise serializers.ValidationError("You can update only status field")
+            
+        elif user.groups.filter(name = 'Manager').exists() or user.is_superuser:
+            if data['status'] not in [0,1]:
+                raise serializers.ValidationError("Incorrect status code, choose either 1 or 0")
+            
+        else:
+            if 'delivery_crew' in data:
+                raise serializers.ValidationError("You are not able to update delivery crew ")
+            
+        return data

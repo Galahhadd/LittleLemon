@@ -180,6 +180,23 @@ class OrderApiView(APIView):
         serializer = OrderSerializer(order)
         cart.delete()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+
+    def put(self, request, pk):
+        order = get_object_or_404(Order, id = pk)
+        serializer = OrderSerializer(order, data = request.data, context = {'request': request})
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
+    
+    def patch(self, request, pk):
+        order = get_object_or_404(Order, id = pk)
+        serializer = OrderSerializer(order, data = request.data, context = {'request': request}, partial = True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
             
 
         
